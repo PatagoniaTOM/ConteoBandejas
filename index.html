@@ -145,6 +145,9 @@
 
     <div id="average-conteo">Promedio General de Conteos: 0</div>
 
+    <button onclick="downloadCSV()">Descargar CSV</button>
+    <button onclick="downloadPDF()">Descargar PDF</button>
+
     <div class="footer">
         Esta app fue creada para el equipo agrícola de Patagoniafresh
     </div>
@@ -169,7 +172,7 @@
                 container.className = 'image-container';
                 container.innerHTML = `
                     <img src="${e.target.result}" alt="Imagen ${index + 1}">
-                    <canvas id="canvas-${index}" width="2000" height="2000"></canvas>
+                    <canvas id="canvas-${index}" width="400" height="400"></canvas>
                 `;
                 imagesContainer.appendChild(container);
 
@@ -257,7 +260,51 @@
             updateTable(index);
         }
     }
+
+    function downloadCSV() {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Imagen,Conteo Acumulado,% de 540\n";
+
+        counts.forEach((count, index) => {
+            const percentage = ((count / maxCount) * 100).toFixed(2);
+            csvContent += `Imagen ${index + 1},${count},${percentage}%\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "conteo_bandejas.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function downloadPDF() {
+        const table = document.querySelector("table");
+        const title = document.querySelector("h1").innerText;
+        const pdfContent = [];
+        pdfContent.push([title]);
+
+        // Agregar las filas de la tabla al contenido PDF
+        const rows = Array.from(table.querySelectorAll("tr"));
+        rows.forEach(row => {
+            const columns = Array.from(row.querySelectorAll("td, th")).map(col => col.innerText);
+            pdfContent.push(columns);
+        });
+
+        const doc = new jsPDF('p', 'pt');
+        doc.autoTable({
+            head: [pdfContent[1]],
+            body: pdfContent.slice(2),
+            margin: { top: 50 }
+        });
+
+        doc.save("conteo_bandejas.pdf");
+    }
 </script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
 </body>
 </html>
