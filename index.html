@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conteo de Bandejas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .logo img {
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .title-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .image-upload {
+            margin-bottom: 20px;
+        }
+
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin: 10px;
+        }
+
+        .image-container img {
+            width: 100%;
+            max-width: 200px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .image-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .table-container {
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 8px;
+            background-color: #ff6666;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ff3333;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .image-container img {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo">
+        <img src="https://empresasiansa.cl/patagoniafresh/wp-content/uploads/sites/6/2020/03/logo-patagoniafresh.svg" alt="Logo Patagoniafresh" width="200">
+    </div>
+
+    <h1>Conteo de Bandejas</h1>
+
+    <input class="title-input" type="text" placeholder="Escribe el título aquí">
+
+    <div class="image-upload">
+        <label for="image-upload">Cargar imágenes:</label>
+        <input type="file" id="image-upload" accept="image/*" multiple onchange="loadImages()">
+    </div>
+
+    <div id="images-container"></div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Imagen</th>
+                    <th>Conteo Acumulado</th>
+                    <th>% de 540</th>
+                    <th>Deshacer último clic</th>
+                </tr>
+            </thead>
+            <tbody id="conteo-table-body"></tbody>
+        </table>
+    </div>
+
+    <div id="average-conteo">Promedio General de Conteos: 0</div>
+
+    <div class="footer">
+        Esta app fue creada para el equipo agrícola de Patagoniafresh
+    </div>
+</div>
+
+<script>
+    const counts = [];
+    const circlesHistory = [];
+    const maxCount = 540;
+
+    function loadImages() {
+        const input = document.getElementById('image-upload');
+        const imagesContainer = document.getElementById('images-container');
+        imagesContainer.innerHTML = '';
+        const tableBody = document.getElementById('conteo-table-body');
+        tableBody.innerHTML = '';
+
+        Array.from(input.files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const container = document.createElement('div');
+                container.className = 'image-container';
+                container.innerHTML = `
+                    <img src="${e.target.result}" alt="Imagen ${index + 1}">
+                    <canvas id="canvas-${index}" width="200" height="200"></canvas>
+                `;
+                imagesContainer.appendChild(container);
+
+                counts[index] = 0;
+                circlesHistory[index] = [];
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>Imagen ${index + 1}</td>
+                    <td id="count-${index}">0</td>
+                    <td id="percentage-${index}">0%</td>
+                    <td><button onclick="undoLastClick(${index})">Deshacer</button></td>
+                `;
+                tableBody.appendChild(row);
+
+                initCanvas(index);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function initCanvas(index) {
+        const canvas = document.getElementById(`canvas-${index}`);
+        const ctx = canvas.getContext("2d");
+
+        canvas.addEventListener("click", function(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            ctx.strokeStyle = "yellow";
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            // Guardar el clic en el historial
+            circlesHistory[index].push({x, y});
+
+            // Incrementar el conteo
+            counts[index]++;
+            updateTable(index);
+        });
+    }
+
+    function updateTable(index) {
+        const count = counts[index];
+        const percentage = ((count / maxCount) * 100).toFixed(2);
+        document.getElementById(`count-${index}`).innerText = count;
+        document.getElementById(`percentage-${index}`).innerText = `${percentage}%`;
+
+        // Actualizar el promedio general
+        const totalCount = counts.reduce((a, b) => a + b, 0);
+        const averageCount = (totalCount / counts.length).toFixed(2);
+        document.getElementById("average-conteo").innerText = `Promedio General de Conteos: ${averageCount}`;
+    }
+
+    function undoLastClick(index) {
+        const canvas = document.getElementById(`canvas-${index}`);
+        const ctx = canvas.getContext("2d");
+
+        if (circlesHistory[index].length > 0) {
+            // Eliminar el último clic
+            circlesHistory[index].pop();
+            counts[index]--;
+
+            // Limpiar el canvas y redibujar los círculos restantes
+            const image = canvas.previousElementSibling;
+            const img = new Image();
+            img.src = image.src;
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                circlesHistory[index].forEach(circle => {
+                    ctx.strokeStyle = "yellow";
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.arc(circle.x, circle.y, 5, 0, 2 * Math.PI);
+                    ctx.stroke();
+                });
+            };
+
+            // Actualizar la tabla
+            updateTable(index);
+        }
+    }
+</script>
+
+</body>
+</html>
